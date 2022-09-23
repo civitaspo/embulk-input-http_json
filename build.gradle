@@ -1,98 +1,97 @@
 plugins {
-    id "com.jfrog.bintray" version "1.1"
-    id "com.github.jruby-gradle.base" version "1.5.0"
     id "java"
-    id "checkstyle"
+    id "maven-publish"
+    id "org.embulk.embulk-plugins" version "0.5.3"
+    id "com.diffplug.spotless" version "6.11.0"
+    // note: We cannot use the latest version because of the following error.
+    // > org/eclipse/jgit/lib/Repository has been compiled by a more recent version of the Java Runtime (class file version 55.0), this version of the Java Runtime only recognizes class file versions up to 52.0
+    // id "com.palantir.git-version" version "0.15.0"
+    id "com.palantir.git-version" version "0.12.3"
 }
-import com.github.jrubygradle.JRubyExec
 repositories {
     mavenCentral()
-    jcenter()
 }
-configurations {
-    provided
-}
-
-version = "0.1.0"
+group = "pro.civitaspo"
+description = "An Embulk plugin to ingest data from REST API (Content-Type=application/json) with jq."
+version = {
+    def vd = versionDetails()
+    if (vd.commitDistance == 0 && vd.lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)?/) {
+        vd.lastTag
+    } else {
+        "0.0.0.${vd.gitHash}"
+    }
+}()
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.9.24"
-    provided "org.embulk:embulk-core:0.9.24"
-    // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
-    testCompile "junit:junit:4.+"
-}
+    def embulkVersion = "0.10.36"
+    compileOnly "org.embulk:embulk-api:${embulkVersion}"
+    compileOnly "org.embulk:embulk-spi:${embulkVersion}"
 
-task classpath(type: Copy, dependsOn: ["jar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
-    into "classpath"
-}
-clean { delete "classpath" }
+    compileOnly "org.embulk:embulk-util-config:0.3.1"
+    compileOnly "org.embulk:embulk-util-json:0.1.1"
+    compileOnly "org.embulk:embulk-util-timestamp:0.2.1"
+    compileOnly "org.hibernate:hibernate-validator:8.0.0.Final"
+    compileOnly "org.glassfish:jakarta.el:4.0.2"
 
-checkstyle {
-    configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
-    toolVersion = '6.14.1'
-}
-checkstyleMain {
-    configFile = file("${project.rootDir}/config/checkstyle/default.xml")
-    ignoreFailures = true
-}
-checkstyleTest {
-    configFile = file("${project.rootDir}/config/checkstyle/default.xml")
-    ignoreFailures = true
-}
-task checkstyle(type: Checkstyle) {
-    classpath = sourceSets.main.output + sourceSets.test.output
-    source = sourceSets.main.allJava + sourceSets.test.allJava
-}
+    compileOnly "org.embulk:embulk-base-restclient:0.10.1"
+    compileOnly("org.embulk:embulk-util-retryhelper-jaxrs:0.8.1") {
+        exclude group: "org.slf4j", module: "slf4j-api"
+    }
+    // NOTE: Avoid 'java.lang.LinkageError: ClassCastException: attempting to castjar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class to jar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class'
+    // compile "org.glassfish.jersey.core:jersey-client:3.0.3"
+    compileOnly "org.glassfish.jersey.core:jersey-client:2.25.1"
+    compileOnly project(path: ":shadow-jackson-jq", configuration: 'shadow')
 
-task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "build", "${project.name}.gemspec"
-    doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
+    testImplementation platform('org.junit:junit-bom:5.8.1')
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.embulk:embulk-core:${embulkVersion}"
+    testImplementation "org.embulk:embulk-deps:${embulkVersion}"
+    testImplementation "org.embulk:embulk-input-config:${embulkVersion}"
+    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
 }
-
-task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "push", "pkg/${project.name}-${project.version}.gem"
+embulkPlugin {
+    mainClass = "pro.civitaspo.embulk.input.http_json.HttpJsonInputPlugin"
+    category = "input"
+    type = "http_json"
 }
-
-task "package"(dependsOn: ["gemspec", "classpath"]) {
-    doLast {
-        println "> Build succeeded."
-        println "> You can run embulk with '-L ${file(".").absolutePath}' argument."
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
+        }
     }
 }
-
-task gemspec {
-    ext.gemspecFile = file("${project.name}.gemspec")
-    inputs.file "build.gradle"
-    outputs.file gemspecFile
-    doLast { gemspecFile.write($/
-Gem::Specification.new do |spec|
-  spec.name          = "${project.name}"
-  spec.version       = "${project.version}"
-  spec.authors       = ["Takahiro Nakayama"]
-  spec.summary       = %[Http Json input plugin for Embulk]
-  spec.description   = %[Loads records from Http Json.]
-  spec.email         = ["civitaspo@gmail.com"]
-  spec.licenses      = ["MIT"]
-  # TODO set this: spec.homepage      = "https://github.com/civitaspo/embulk-input-http_json"
-
-  spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
-  spec.test_files    = spec.files.grep(%r"^(test|spec)/")
-  spec.require_paths = ["lib"]
-
-  #spec.add_dependency 'YOUR_GEM_DEPENDENCY', ['~> YOUR_GEM_DEPENDENCY_VERSION']
-  spec.add_development_dependency 'bundler', ['~> 1.0']
-  spec.add_development_dependency 'rake', ['~> 12.0']
-end
-/$)
+gem {
+    from("LICENSE.txt")
+    authors = [ "Civitaspo" ]
+    email = [ "civitaspo@gmail.com" ]
+    summary = "An Embulk plugin to ingest data from REST API (Content-Type=application/json) with jq."
+    homepage = "https://github.com/civitaspo/embulk-input-http_json"
+    licenses = [ "MIT" ]
+}
+spotless {
+    java {
+        importOrder()
+        removeUnusedImports()
+        googleJavaFormat().aosp()
     }
 }
-clean { delete "${project.name}.gemspec" }
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR"
+        exceptionFormat "full"
+        showExceptions true
+        showCauses true
+        showStackTraces true
+        showStandardStreams true
+    }
+}

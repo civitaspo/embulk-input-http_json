@@ -1,0 +1,29 @@
+
+plugins {
+    id "java"
+    id "com.github.johnrengelman.shadow" version "6.1.0"
+}
+repositories {
+    mavenCentral()
+}
+version = "${rootProject.version}"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+configurations {
+    runtimeClasspath {
+        resolutionStrategy.activateDependencyLocking()
+    }
+    shadow {
+        resolutionStrategy.activateDependencyLocking()
+        transitive = false
+    }
+}
+dependencies {
+    // TODO: Use a stable release instead of the preview release.
+    compileOnly 'net.thisptr:jackson-jq:1.0.0-preview.20210928'
+}
+// Relocate some packages since they are incompatible from Embulk's.
+shadowJar {
+}

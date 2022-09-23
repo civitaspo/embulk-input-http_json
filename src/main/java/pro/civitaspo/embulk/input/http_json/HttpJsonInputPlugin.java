@@ -1,4 +1,4 @@
-package org.embulk.input.http_json;
+package pro.civitaspo.embulk.input.http_json;
 
 import java.util.List;
 
