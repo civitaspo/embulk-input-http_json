@@ -1,0 +1,11 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+com.fasterxml.jackson.core:jackson-annotations:2.13.3=runtimeClasspath
+com.fasterxml.jackson.core:jackson-core:2.13.3=runtimeClasspath
+com.fasterxml.jackson.core:jackson-databind:2.13.3=runtimeClasspath
+com.fasterxml.jackson:jackson-bom:2.13.3=runtimeClasspath
+net.thisptr:jackson-jq:1.0.0-preview.20220705=runtimeClasspath
+org.jruby.jcodings:jcodings:1.0.57=runtimeClasspath
+org.jruby.joni:joni:2.1.43=runtimeClasspath
+empty=shadow

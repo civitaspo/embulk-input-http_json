@@ -1,7 +1,7 @@
 
 plugins {
     id "java"
-    id "com.github.johnrengelman.shadow" version "6.1.0"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
 }
 repositories {
     mavenCentral()
@@ -22,7 +22,8 @@ configurations {
 }
 dependencies {
     // TODO: Use a stable release instead of the preview release.
-    compileOnly 'net.thisptr:jackson-jq:1.0.0-preview.20210928'
+    // https://mvnrepository.com/artifact/net.thisptr/jackson-jq
+    implementation 'net.thisptr:jackson-jq:1.0.0-preview.20220705'
 }
 // Relocate some packages since they are incompatible from Embulk's.
 shadowJar {

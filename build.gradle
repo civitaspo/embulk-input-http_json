@@ -30,20 +30,20 @@ dependencies {
     compileOnly "org.embulk:embulk-api:${embulkVersion}"
     compileOnly "org.embulk:embulk-spi:${embulkVersion}"
 
-    compileOnly "org.embulk:embulk-util-config:0.3.1"
-    compileOnly "org.embulk:embulk-util-json:0.1.1"
-    compileOnly "org.embulk:embulk-util-timestamp:0.2.1"
-    compileOnly "org.hibernate:hibernate-validator:8.0.0.Final"
-    compileOnly "org.glassfish:jakarta.el:4.0.2"
+    implementation "org.embulk:embulk-util-config:0.3.1"
+    implementation "org.embulk:embulk-util-json:0.1.1"
+    implementation "org.embulk:embulk-util-timestamp:0.2.1"
+    implementation "org.hibernate:hibernate-validator:8.0.0.Final"
+    implementation "org.glassfish:jakarta.el:4.0.2"
 
-    compileOnly "org.embulk:embulk-base-restclient:0.10.1"
-    compileOnly("org.embulk:embulk-util-retryhelper-jaxrs:0.8.1") {
+    implementation "org.embulk:embulk-base-restclient:0.10.1"
+    implementation("org.embulk:embulk-util-retryhelper-jaxrs:0.8.1") {
         exclude group: "org.slf4j", module: "slf4j-api"
     }
     // NOTE: Avoid 'java.lang.LinkageError: ClassCastException: attempting to castjar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class to jar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class'
     // compile "org.glassfish.jersey.core:jersey-client:3.0.3"
-    compileOnly "org.glassfish.jersey.core:jersey-client:2.25.1"
-    compileOnly project(path: ":shadow-jackson-jq", configuration: 'shadow')
+    implementation "org.glassfish.jersey.core:jersey-client:2.25.1"
+    implementation project(path: ":shadow-jackson-jq", configuration: 'shadow')
 
     testImplementation platform('org.junit:junit-bom:5.8.1')
     testImplementation "org.junit.jupiter:junit-jupiter"
