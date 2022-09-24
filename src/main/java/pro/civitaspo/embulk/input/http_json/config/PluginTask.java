@@ -72,6 +72,18 @@ public interface PluginTask extends RestClientInputTaskBase {
     @ConfigDefault("null")
     public Optional<String> getBody();
 
+    @Config("success_condition")
+    @ConfigDefault("\".status_code_class == 200\"")
+    public @NotBlank String getSuccessCondition();
+
+    @Config("response_transformer")
+    @ConfigDefault("\".\"")
+    public @NotBlank String getResponseTransformer();
+
+    @Config("payload_column_name")
+    @ConfigDefault("\"payload\"")
+    public @NotBlank String getPayloadColumnName();
+
     public interface PagerOption extends Task {
         @Config("initial_params")
         @ConfigDefault("[]")
