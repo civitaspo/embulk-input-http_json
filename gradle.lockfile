@@ -1,0 +1,37 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+com.fasterxml.jackson.core:jackson-annotations:2.6.7=compileClasspath
+com.fasterxml.jackson.core:jackson-core:2.6.7=compileClasspath
+com.fasterxml.jackson.core:jackson-databind:2.6.7=compileClasspath
+com.fasterxml:classmate:1.5.1=compileClasspath
+jakarta.el:jakarta.el-api:4.0.0=compileClasspath
+jakarta.validation:jakarta.validation-api:3.0.2=compileClasspath
+javax.annotation:javax.annotation-api:1.2=compileClasspath
+javax.inject:javax.inject:1=compileClasspath
+javax.ws.rs:javax.ws.rs-api:2.0.1=compileClasspath
+org.embulk:embulk-api:0.10.36=compileClasspath
+org.embulk:embulk-base-restclient:0.10.1=compileClasspath
+org.embulk:embulk-spi:0.10.36=compileClasspath
+org.embulk:embulk-util-config:0.3.1=compileClasspath
+org.embulk:embulk-util-json:0.1.1=compileClasspath
+org.embulk:embulk-util-retryhelper-jaxrs:0.8.1=compileClasspath
+org.embulk:embulk-util-retryhelper:0.8.1=compileClasspath
+org.embulk:embulk-util-timestamp:0.2.1=compileClasspath
+org.glassfish.hk2.external:aopalliance-repackaged:2.5.0-b32=compileClasspath
+org.glassfish.hk2.external:javax.inject:2.5.0-b32=compileClasspath
+org.glassfish.hk2:hk2-api:2.5.0-b32=compileClasspath
+org.glassfish.hk2:hk2-locator:2.5.0-b32=compileClasspath
+org.glassfish.hk2:hk2-utils:2.5.0-b32=compileClasspath
+org.glassfish.hk2:osgi-resource-locator:1.0.1=compileClasspath
+org.glassfish.jersey.bundles.repackaged:jersey-guava:2.25.1=compileClasspath
+org.glassfish.jersey.core:jersey-client:2.25.1=compileClasspath
+org.glassfish.jersey.core:jersey-common:2.25.1=compileClasspath
+org.glassfish:jakarta.el:4.0.2=compileClasspath
+org.hibernate.validator:hibernate-validator:8.0.0.Final=compileClasspath
+org.hibernate:hibernate-validator:8.0.0.Final=compileClasspath
+org.javassist:javassist:3.20.0-GA=compileClasspath
+org.jboss.logging:jboss-logging:3.4.1.Final=compileClasspath
+org.msgpack:msgpack-core:0.8.11=compileClasspath
+org.slf4j:slf4j-api:1.7.30=compileClasspath
+empty=runtimeClasspath
