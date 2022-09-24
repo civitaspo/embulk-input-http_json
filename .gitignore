@@ -11,3 +11,4 @@ build/
 .classpath
 .project
 /example/wiremock/__*
+/bin/
