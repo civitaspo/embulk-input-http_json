@@ -52,7 +52,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
     public void validateInputTask(PluginTask task) {
         BeanValidator.validate(task);
         validateJsonQuery("success_condition", task.getSuccessCondition());
-        validateJsonQuery("response_transformer", task.getResponseTransformer());
+        validateJsonQuery("transformer", task.getTransformer());
         validateJsonQuery("retry.condition", task.getRetry().getCondition());
     }
 
@@ -75,11 +75,11 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
                 configMapperFactory
                         .newTaskReport(); // todo: numRecords, avgLatency, maxLatency, minLatency,
         ObjectNode response = fetch(task, retryHelper, task.getPager().getInitialParams());
-        ingestTransformedResponse(
+        ingestTransformedJsonRecord(
                 task, recordImporter, pageBuilder, transformResponse(task, response));
         while (pagenationRequired(task, response)) {
             response = fetch(task, retryHelper, nextParams(task, response));
-            ingestTransformedResponse(
+            ingestTransformedJsonRecord(
                     task, recordImporter, pageBuilder, transformResponse(task, response));
         }
         return report;
@@ -110,7 +110,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
             PluginTask task) {
         return JacksonServiceResponseMapper.builder()
                 .add(
-                        task.getTransformedResponseColumnName(),
+                        task.getTransformedJsonColumnName(),
                         Types.JSON,
                         task.getDefaultTimestampFormat())
                 .build();
@@ -143,9 +143,9 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
 
     private JsonNode transformResponse(PluginTask task, ObjectNode response) {
         try {
-            return jq.jqSingle(task.getResponseTransformer(), response);
+            return jq.jqSingle(task.getTransformer(), response);
         } catch (IllegalJQProcessingException e) {
-            throw new DataException("Failed to apply 'response_transformer'.", e);
+            throw new DataException("Failed to apply 'transformer'.", e);
         }
     }
 
@@ -193,23 +193,23 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         return nextParams;
     }
 
-    private void ingestTransformedResponse(
+    private void ingestTransformedJsonRecord(
             PluginTask task,
             RecordImporter recordImporter,
             PageBuilder pageBuilder,
-            JsonNode transformedResponse) {
+            JsonNode transformedJsonRecord) {
 
-        if (task.getExtractTransformedResponse()) {
-            if (!transformedResponse.isArray())
-                throw new DataException("Expected array node: " + transformedResponse.toString());
-            for (JsonNode record : ((ArrayNode) transformedResponse)) {
+        if (task.getExtractTransformedJsonArray()) {
+            if (!transformedJsonRecord.isArray())
+                throw new DataException("Expected array node: " + transformedJsonRecord.toString());
+            for (JsonNode record : ((ArrayNode) transformedJsonRecord)) {
                 ObjectNode on = objectMapper.createObjectNode();
-                on.set(task.getTransformedResponseColumnName(), record);
+                on.set(task.getTransformedJsonColumnName(), record);
                 recordImporter.importRecord(new JacksonServiceRecord(on), pageBuilder);
             }
         } else {
             ObjectNode on = objectMapper.createObjectNode();
-            on.set(task.getTransformedResponseColumnName(), transformedResponse);
+            on.set(task.getTransformedJsonColumnName(), transformedJsonRecord);
             recordImporter.importRecord(new JacksonServiceRecord(on), pageBuilder);
         }
     }

@@ -84,17 +84,17 @@ public interface PluginTask extends RestClientInputTaskBase {
     @ConfigDefault("\".status_code_class == 200\"")
     public @NotBlank String getSuccessCondition();
 
-    @Config("response_transformer")
-    @ConfigDefault("\".\"")
-    public @NotBlank String getResponseTransformer();
+    @Config("transformer")
+    @ConfigDefault("\"[.response_body]\"")
+    public @NotBlank String getTransformer();
 
-    @Config("transformed_response_column_name")
+    @Config("transformed_json_column_name")
     @ConfigDefault("\"payload\"")
-    public @NotBlank String getTransformedResponseColumnName();
+    public @NotBlank String getTransformedJsonColumnName();
 
-    @Config("extract_transformed_response")
+    @Config("extract_transformed_json_array")
     @ConfigDefault("true")
-    public boolean getExtractTransformedResponse();
+    public boolean getExtractTransformedJsonArray();
 
     public interface PagerOption extends Task {
         @Config("initial_params")
