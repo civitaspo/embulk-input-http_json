@@ -88,9 +88,13 @@ public interface PluginTask extends RestClientInputTaskBase {
     @ConfigDefault("\".\"")
     public @NotBlank String getResponseTransformer();
 
-    @Config("payload_column_name")
+    @Config("transformed_response_column_name")
     @ConfigDefault("\"payload\"")
-    public @NotBlank String getPayloadColumnName();
+    public @NotBlank String getTransformedResponseColumnName();
+
+    @Config("extract_transformed_response")
+    @ConfigDefault("true")
+    public boolean getExtractTransformedResponse();
 
     public interface PagerOption extends Task {
         @Config("initial_params")
@@ -103,9 +107,9 @@ public interface PluginTask extends RestClientInputTaskBase {
         public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank Object>>
                 getNextParams();
 
-        @Config("until")
-        @ConfigDefault("\"true\"")
-        public Optional<@NotBlank String> getUntil();
+        @Config("while")
+        @ConfigDefault("\"false\"")
+        public @NotBlank String getWhile();
     }
 
     @Config("pager")

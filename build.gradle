@@ -33,7 +33,10 @@ dependencies {
     implementation "org.embulk:embulk-util-config:0.3.1"
     implementation "org.embulk:embulk-util-json:0.1.1"
     implementation "org.embulk:embulk-util-timestamp:0.2.1"
-    implementation "org.hibernate:hibernate-validator:8.0.0.Final"
+    // note: 8.0.0 is not compatible with Embulk 0.10.36.
+    //       class file has wrong version 55.0, should be 52.0
+    // implementation "org.hibernate:hibernate-validator:8.0.0.Final"
+    implementation "org.hibernate:hibernate-validator:7.0.5.Final"
     implementation "org.glassfish:jakarta.el:4.0.2"
 
     implementation "org.embulk:embulk-base-restclient:0.10.1"

@@ -132,14 +132,21 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
         for (Map.Entry<String, List<Object>> e : params.entrySet()) {
             target = target.queryParam(e.getKey(), e.getValue().toArray());
         }
-        Response delegate;
-        if (body.isPresent()) {
-            Entity<String> entity = Entity.entity(body.get(), contentType);
-            delegate = target.request().headers(headers).method(method, entity);
-        } else {
-            delegate = target.request().headers(headers).method(method);
+        long latency = -1L; // -1L means "not measured yet".
+        try {
+            long start = System.currentTimeMillis();
+            Response delegate;
+            if (body.isPresent()) {
+                Entity<String> entity = Entity.entity(body.get(), contentType);
+                delegate = target.request().headers(headers).method(method, entity);
+            } else {
+                delegate = target.request().headers(headers).method(method);
+            }
+            latency = System.currentTimeMillis() - start;
+            return JAXRSEntityRecycleResponse.of(delegate);
+        } finally {
+            logger.info("Request: {} {} (Latency: {} ms)", method, target.getUri(), latency);
         }
-        return JAXRSEntityRecycleResponse.of(delegate);
     }
 
     @Override
