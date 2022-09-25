@@ -9,12 +9,3 @@ in:
   success_condition_jq: '.status_code_class == 200'
 out:
   type: stdout
-  scheme: http
-  host: localhost
-  port: 8080
-  path: /example
-  method: POST
-  headers: []
-  buffer_size: 2
-  transformer_jq: '{events: (.)}'
-  success_condition_jq: '.status_code_class == 200'
