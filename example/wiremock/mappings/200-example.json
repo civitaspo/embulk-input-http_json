@@ -1,0 +1,16 @@
+{
+    "request": {
+        "method": "GET",
+        "url": "/example"
+    },
+    "response": {
+        "status": 200,
+        "jsonBody": {
+            "message": "Hello world!",
+            "integerValues": [1, 2, 3]
+        },
+        "headers": {
+            "Content-Type": "application/json"
+        }
+    }
+}
