@@ -31,6 +31,10 @@ public interface PluginTask extends RestClientInputTaskBase {
     @ValueOfEnum(enumClass = URIScheme.class)
     public String getScheme();
 
+    @Config("host")
+    @NotBlank
+    public String getHost();
+
     @Config("port")
     @ConfigDefault("null")
     public Optional<@Min(0) @Max(65535) Integer> getPort();
@@ -66,11 +70,15 @@ public interface PluginTask extends RestClientInputTaskBase {
 
     @Config("params")
     @ConfigDefault("[]")
-    public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank String>> getParams();
+    public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotNull Object>> getParams();
 
     @Config("body")
     @ConfigDefault("null")
     public Optional<String> getBody();
+
+    @Config("content_type")
+    @ConfigDefault("\"application/json\"")
+    public String getContentType();
 
     @Config("success_condition")
     @ConfigDefault("\".status_code_class == 200\"")
@@ -87,12 +95,13 @@ public interface PluginTask extends RestClientInputTaskBase {
     public interface PagerOption extends Task {
         @Config("initial_params")
         @ConfigDefault("[]")
-        public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank String>>
+        public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotNull Object>>
                 getInitialParams();
 
-        @Config("params")
+        @Config("next_params")
         @ConfigDefault("[]")
-        public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank String>> getParams();
+        public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank Object>>
+                getNextParams();
 
         @Config("until")
         @ConfigDefault("\"true\"")
@@ -124,6 +133,11 @@ public interface PluginTask extends RestClientInputTaskBase {
     @Config("retry")
     @ConfigDefault("{}")
     public RetryOption getRetry();
+
+    @Config("show_request_body_on_error")
+    @ConfigDefault("true")
+    @NotNull
+    public Boolean getShowRequestBodyOnError();
 
     @Config("default_timezone")
     @ConfigDefault("\"UTC\"")
