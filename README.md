@@ -1,6 +1,6 @@
 # embulk-input-http_json
 
-[![main](https://github.com/civitaspo/embulk-input-http_json/actions/workflows/release.yml/badge.svg)](https://github.com/civitaspo/embulk-input-http_json/actions/workflows/release.yml)
+[![main](https://github.com/civitaspo/embulk-input-http_json/actions/workflows/main.yml/badge.svg)](https://github.com/civitaspo/embulk-input-http_json/actions/workflows/main.yml)
 
 An Embulk plugin to ingest json records from REST API with transformation by [`jq`](https://github.com/eiiches/jackson-jq).
 
