@@ -80,7 +80,7 @@ in:
   path: /example
   method: GET
   transformer: '.response_body.integerValues'
-  success_condition_jq: '.status_code_class == 200'
+  success_condition: '.status_code_class == 200'
 out:
   type: stdout
 ```
