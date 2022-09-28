@@ -1,5 +1,6 @@
 package pro.civitaspo.embulk.input.http_json.config;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -74,11 +75,7 @@ public interface PluginTask extends RestClientInputTaskBase {
 
     @Config("body")
     @ConfigDefault("null")
-    public Optional<String> getBody();
-
-    @Config("content_type")
-    @ConfigDefault("\"application/json\"")
-    public String getContentType();
+    public Optional<JsonNode> getBody();
 
     @Config("success_condition")
     @ConfigDefault("\".status_code_class == 200\"")
@@ -106,6 +103,10 @@ public interface PluginTask extends RestClientInputTaskBase {
         @ConfigDefault("[]")
         public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank Object>>
                 getNextParams();
+
+        @Config("next_body_transformer")
+        @ConfigDefault("\".request_body\"")
+        public String getNextBodyTransformer();
 
         @Config("while")
         @ConfigDefault("\"false\"")

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
@@ -16,9 +17,13 @@ public class JAXRSResponseJson {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static ObjectNode convertResponseToObjectNode(
-            MultivaluedMap<String, Object> requestParams, Response response) throws IOException {
+            MultivaluedMap<String, Object> requestParams,
+            Optional<JsonNode> requestBody,
+            Response response)
+            throws IOException {
         ObjectNode responseJson = mapper.createObjectNode();
         responseJson.putArray("request_params").addAll(extractRequestParams(requestParams));
+        requestBody.ifPresent(body -> responseJson.set("request_body", body));
         responseJson.put("status_code", response.getStatus());
         responseJson.put("status_code_class", (response.getStatus() / 100) * 100);
         String json = response.readEntity(String.class);

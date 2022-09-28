@@ -20,14 +20,14 @@ An Embulk plugin to ingest json records from REST API with transformation by [`j
 - **headers**: HTTP Headers (array of map, optional, allows: 1 element can contains 1 key-value.)
 - **method**: HTTP Method (string, default: `"GET"`, allows: `"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`, `"GET"`, `"HEAD"`, `"OPTIONS"`, `"TRACE"`, `"CONNECT"`)
 - **params**: HTTP Request params. This is merged with params for pagenation when the `pager` option is specified. (array of map, optional, allows: 1 element can contains 1 key-value.)
-- **body**: HTTP Request body. (string, optional)
-- **content_type**: HTTP Request Content-Type. (string, default: `"application/json"`)
+- **body**: HTTP Request body. (json, optional)
 - **success_condition**: jq filter to check whether the response is succeeded or not. You can use [`jq`](https://github.com/eiiches/jackson-jq) to query for the status code and the response body. (string, `".status_code_class == 200"`)
 - **transformer**: jq filter to transform the api response json. (string, `"[.response_body]"`)
 - **extract_transformed_json_array**: If true, the plugin extracts the transformed json array, and ingest them as records. (boolean, default: `true`)
 - **pager**: (the following options are acceptable, default: `{}`)
   - **initial_params**: Additional HTTP Request params that is used the first request. (array of map, optional, allows: 1 element can contains 1 key-value.)
   - **next_params**: Additional HTTP Request params that is used the subsequent requests. The value is treated as a [`jq`](https://github.com/eiiches/jackson-jq) filter to transform the prior response. (array of map, optional, allows: 1 element can contains 1 key-value.)
+  - **next_body_transformer**: jq filter to transform the prior response to the next request body. (string, default: `".request_body"`)
   - **while**: jq filter to check whether the pagination is required or not. You can use [`jq`](https://github.com/eiiches/jackson-jq) to query for the status code and the response body. (string, `"false"`)
 - **retry**: (the following options are acceptable, default: `{}`)
   - **condition**: jq filter to check whether the response is retryable or not. This condition will be used when it is determined that the response is not succeeded by `success_condition_jq`. You can use [`jq`](https://github.com/eiiches/jackson-jq) to query for the status code and the response body. (string, `"true"`)
@@ -46,6 +46,7 @@ The following options accept the [`jq`](https://github.com/eiiches/jackson-jq) f
 - **success_condition**
 - **transformer**
 - **pager/next_params**
+- **pager/next_body_transformer**
 - **retry/condition**
 
 All of the [`jq`](https://github.com/eiiches/jackson-jq) filters transform json that has the same format as the following.
@@ -55,6 +56,9 @@ All of the [`jq`](https://github.com/eiiches/jackson-jq) filters transform json 
   "request_params": [
     {"name": "foo", "value": "bar"}
   ],
+  "request_body": {
+    "foo": "bar"
+  },
   "status_code": 201,
   "status_code_class": 200,
   "response_body": {

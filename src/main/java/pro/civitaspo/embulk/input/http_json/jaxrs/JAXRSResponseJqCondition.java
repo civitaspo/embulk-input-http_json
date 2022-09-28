@@ -1,6 +1,8 @@
 package pro.civitaspo.embulk.input.http_json.jaxrs;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
+import java.util.Optional;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import pro.civitaspo.embulk.input.http_json.jq.IllegalJQProcessingException;
@@ -22,10 +24,15 @@ public class JAXRSResponseJqCondition {
         jq.validateFilter(jqFilter);
     }
 
-    public boolean isSatisfied(MultivaluedMap<String, Object> requestParams, Response response)
+    public boolean isSatisfied(
+            MultivaluedMap<String, Object> requestParams,
+            Optional<JsonNode> requestBody,
+            Response response)
             throws InvalidJQFilterException, IOException, IllegalJQProcessingException {
         return jq.jqBoolean(
-                jqFilter, JAXRSResponseJson.convertResponseToObjectNode(requestParams, response));
+                jqFilter,
+                JAXRSResponseJson.convertResponseToObjectNode(
+                        requestParams, requestBody, response));
     }
 
     public String getJqFilter() {
