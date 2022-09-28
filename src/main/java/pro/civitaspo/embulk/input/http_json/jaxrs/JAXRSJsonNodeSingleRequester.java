@@ -1,5 +1,6 @@
 package pro.civitaspo.embulk.input.http_json.jaxrs;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.List;
@@ -32,6 +33,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     public static class Builder {
         private PluginTask task;
         private List<Map<String, Object>> additionalParams;
+        private Optional<JsonNode> body;
         private JQ jq;
         private JAXRSRetryHelper retryHelper;
 
@@ -57,12 +59,18 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
             return this;
         }
 
+        public Builder body(Optional<JsonNode> body) {
+            this.body = body;
+            return this;
+        }
+
         public JAXRSJsonNodeSingleRequester build() {
             if (task == null) throw new IllegalStateException("task is not set");
             if (jq == null) throw new IllegalStateException("jq is not set");
             if (additionalParams == null)
                 throw new IllegalStateException("additionalParams is not set");
             if (retryHelper == null) throw new IllegalStateException("retryHelper is not set");
+            if (body == null) throw new IllegalStateException("body is not set");
             return new JAXRSJsonNodeSingleRequester(this);
         }
     }
@@ -71,8 +79,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
         return new Builder();
     }
 
-    private final Optional<String> body;
-    private final String contentType;
+    private final Optional<JsonNode> body;
     private final MultivaluedMap<String, Object> params;
     private final String endpoint;
     private final String method;
@@ -83,8 +90,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     private final boolean showRequestBodyOnError;
 
     private JAXRSJsonNodeSingleRequester(Builder builder) {
-        this.body = builder.task.getBody();
-        this.contentType = builder.task.getContentType();
+        this.body = builder.body;
         this.params = buildParams(builder.task, builder.additionalParams);
         this.endpoint = buildEndpoint(builder.task);
         this.method = builder.task.getMethod();
@@ -115,7 +121,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     private MultivaluedMap<String, Object> buildHeaders(PluginTask task) {
         MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
         task.getHeaders().forEach(h -> h.forEach((k, v) -> headers.add(k, v)));
-        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.valueOf(task.getContentType()));
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_TYPE);
         return headers;
     }
 
@@ -137,7 +143,8 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
             long start = System.currentTimeMillis();
             Response delegate;
             if (body.isPresent()) {
-                Entity<String> entity = Entity.entity(body.get(), contentType);
+                Entity<String> entity =
+                        Entity.entity(body.get().toString(), MediaType.APPLICATION_JSON_TYPE);
                 delegate = target.request().headers(headers).method(method, entity);
             } else {
                 delegate = target.request().headers(headers).method(method);
@@ -157,13 +164,13 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
         //       here.
         // https://github.com/embulk/embulk-util-retryhelper/blob/402412d/embulk-util-retryhelper-jaxrs/src/main/java/org/embulk/util/retryhelper/jaxrs/JAXRSRetryHelper.java#L107-L109
         try {
-            if (!successCondition.isSatisfied(params, response)) {
-                if (showRequestBodyOnError) {
-                    logger.warn(
-                            "Success condition is not satisfied. Condition jq:'{}', Request body: '{}'",
-                            successCondition.getJqFilter(),
-                            body.toString());
-                }
+            if (!successCondition.isSatisfied(params, body, response)) {
+                logger.warn(
+                        "Success condition is not satisfied. Condition jq:'{}', Request body: '{}'",
+                        successCondition.getJqFilter(),
+                        (showRequestBodyOnError && body.isPresent())
+                                ? body.get().toString()
+                                : "xxxxx(not shown)xxxxx");
                 throw JAXRSWebApplicationExceptionWrapper.wrap(response);
             }
         } catch (InvalidJQFilterException | IllegalJQProcessingException | IOException e) {
@@ -182,7 +189,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     @Override
     protected boolean isResponseStatusToRetry(Response response) {
         try {
-            return retryableCondition.isSatisfied(params, response);
+            return retryableCondition.isSatisfied(params, body, response);
         } catch (InvalidJQFilterException | IllegalJQProcessingException | IOException e) {
             // TODO: Use a suitable exception class.
             throw new DataException(e);
@@ -190,6 +197,7 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     }
 
     public ObjectNode requestWithRetry() {
-        return retryHelper.requestWithRetry(new JAXRSObjectNodeResponseEntityReader(params), this);
+        return retryHelper.requestWithRetry(
+                new JAXRSObjectNodeResponseEntityReader(params, body), this);
     }
 }

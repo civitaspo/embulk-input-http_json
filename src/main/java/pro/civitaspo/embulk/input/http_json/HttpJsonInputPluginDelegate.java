@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import javax.ws.rs.client.ClientBuilder;
 import org.embulk.base.restclient.DefaultServiceDataSplitter;
@@ -74,11 +75,13 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         TaskReport report =
                 configMapperFactory
                         .newTaskReport(); // todo: numRecords, avgLatency, maxLatency, minLatency,
-        ObjectNode response = fetch(task, retryHelper, task.getPager().getInitialParams());
+        ObjectNode response =
+                fetch(task, retryHelper, task.getPager().getInitialParams(), task.getBody());
         ingestTransformedJsonRecord(
                 task, recordImporter, pageBuilder, transformResponse(task, response));
         while (pagenationRequired(task, response)) {
-            response = fetch(task, retryHelper, nextParams(task, response));
+            response =
+                    fetch(task, retryHelper, nextParams(task, response), nextBody(task, response));
             ingestTransformedJsonRecord(
                     task, recordImporter, pageBuilder, transformResponse(task, response));
         }
@@ -88,12 +91,15 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
     private ObjectNode fetch(
             PluginTask task,
             JAXRSRetryHelper retryHelper,
-            List<Map<String, Object>> additionalParams) {
+            List<Map<String, Object>> additionalParams,
+            Optional<JsonNode> body) {
+
         return JAXRSJsonNodeSingleRequester.builder()
                 .task(task)
                 .jq(jq)
                 .retryHelper(retryHelper)
                 .additionalParams(additionalParams)
+                .body(body)
                 .build()
                 .requestWithRetry();
     }
@@ -191,6 +197,17 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
             }
         }
         return nextParams;
+    }
+
+    private Optional<JsonNode> nextBody(PluginTask task, ObjectNode response) {
+        if (!task.getBody().isPresent()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(jq.jqSingle(task.getPager().getNextBodyTransformer(), response));
+        } catch (IllegalJQProcessingException ex) {
+            throw new DataException("Failed to apply 'next_body_transformer'.", ex);
+        }
     }
 
     private void ingestTransformedJsonRecord(
