@@ -229,6 +229,5 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
             on.set(task.getTransformedJsonColumnName(), transformedJsonRecord);
             recordImporter.importRecord(new JacksonServiceRecord(on), pageBuilder);
         }
-        pageBuilder.flush();
     }
 }
