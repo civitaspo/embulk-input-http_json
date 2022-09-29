@@ -111,6 +111,10 @@ public interface PluginTask extends RestClientInputTaskBase {
         @Config("while")
         @ConfigDefault("\"false\"")
         public @NotBlank String getWhile();
+
+        @Config("interval_millis")
+        @ConfigDefault("100")
+        public @Min(0) long getIntervalMillis();
     }
 
     @Config("pager")
