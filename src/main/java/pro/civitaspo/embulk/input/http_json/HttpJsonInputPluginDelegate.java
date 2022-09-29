@@ -80,6 +80,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         ingestTransformedJsonRecord(
                 task, recordImporter, pageBuilder, transformResponse(task, response));
         while (pagenationRequired(task, response)) {
+            sleep(task.getPager().getIntervalMillis());
             response =
                     fetch(task, retryHelper, nextParams(task, response), nextBody(task, response));
             ingestTransformedJsonRecord(
@@ -160,6 +161,14 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
             return jq.jqBoolean(task.getPager().getWhile(), response);
         } catch (IllegalJQProcessingException e) {
             throw new DataException("Failed to apply 'until_condition'.", e);
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted while sleeping.", e);
         }
     }
 

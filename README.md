@@ -29,6 +29,7 @@ An Embulk plugin to ingest json records from REST API with transformation by [`j
   - **next_params**: Additional HTTP Request params that is used the subsequent requests. The value is treated as a [`jq`](https://github.com/eiiches/jackson-jq) filter to transform the prior response. (array of map, optional, allows: 1 element can contains 1 key-value.)
   - **next_body_transformer**: jq filter to transform the prior response to the next request body. (string, default: `".request_body"`)
   - **while**: jq filter to check whether the pagination is required or not. You can use [`jq`](https://github.com/eiiches/jackson-jq) to query for the status code and the response body. (string, `"false"`)
+  - **interval_millis**: Interval in milliseconds between requests. (integer, default: `100`)
 - **retry**: (the following options are acceptable, default: `{}`)
   - **condition**: jq filter to check whether the response is retryable or not. This condition will be used when it is determined that the response is not succeeded by `success_condition_jq`. You can use [`jq`](https://github.com/eiiches/jackson-jq) to query for the status code and the response body. (string, `"true"`)
   - **max_retries**: Maximum retries. (integer, default: `7`)
