@@ -148,6 +148,79 @@ public interface PluginTask extends RestClientInputTaskBase {
     @NotNull
     public Boolean getShowRequestBodyOnError();
 
+    public interface PrepareOption extends Task {
+        public interface RequestOption extends Task {
+            @Config("name")
+            @NotBlank
+            public String getName();
+
+            @Config("scheme")
+            @ConfigDefault("null")
+            public Optional<@ValueOfEnum(enumClass = URIScheme.class) String> getScheme();
+
+            @Config("host")
+            public Optional<@NotBlank String> getHost();
+
+            @Config("port")
+            @ConfigDefault("null")
+            public Optional<@Min(0) @Max(65535) Integer> getPort();
+
+            @Config("path")
+            @ConfigDefault("null")
+            public Optional<@NotBlank String> getPath();
+
+            @Config("headers")
+            @ConfigDefault("null")
+            public Optional<List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank String>>>
+                    getHeaders();
+
+            @Config("method")
+            @ConfigDefault("null")
+            public Optional<
+                            @ValueOfEnum(enumClass = RequestMethod.class, caseSensitive = false)
+                            String>
+                    getMethod();
+
+            @Config("params")
+            @ConfigDefault("null")
+            public Optional<List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotNull Object>>>
+                    getParams();
+
+            @Config("body")
+            @ConfigDefault("null")
+            public Optional<JsonNode> getBody();
+
+            @Config("success_condition")
+            @ConfigDefault("null")
+            public Optional<@NotBlank String> getSuccessCondition();
+
+            @Config("retry")
+            @ConfigDefault("null")
+            public Optional<RetryOption> getRetry();
+        }
+
+        @Config("requests")
+        @ConfigDefault("[]")
+        public List<RequestOption> getRequests();
+
+        public interface AssignToOption extends Task {
+            @Config("params")
+            @ConfigDefault("[]")
+            public List<Map<@NotBlank String, @NotNull String>> getParams();
+
+            @Config("body")
+            @ConfigDefault("null")
+            public Optional<String> getBody();
+        }
+
+        @Config("assign_to")
+        public AssignToOption getAssignTo();
+    }
+
+    @Config("prepare")
+    @ConfigDefault("{}")
+    public List<PrepareOption> getPrepare();
+
     @Config("default_timezone")
     @ConfigDefault("\"UTC\"")
     @NotBlank
