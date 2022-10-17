@@ -33,6 +33,8 @@ import org.embulk.util.retryhelper.jaxrs.JAXRSRetryHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pro.civitaspo.embulk.input.http_json.config.PluginTask;
+import pro.civitaspo.embulk.input.http_json.config.PluginTask.PagerOption;
+import pro.civitaspo.embulk.input.http_json.config.RequestOption;
 import pro.civitaspo.embulk.input.http_json.config.validation.BeanValidator;
 import pro.civitaspo.embulk.input.http_json.jaxrs.JAXRSJsonNodeSingleRequester;
 import pro.civitaspo.embulk.input.http_json.jq.IllegalJQProcessingException;
@@ -80,10 +82,14 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
                 fetch(task, retryHelper, task.getPager().getInitialParams(), task.getBody());
         ingestTransformedJsonRecord(
                 task, recordImporter, pageBuilder, transformResponse(task, response));
-        while (pagenationRequired(task, response)) {
+        while (pagenationRequired(response, task.getPager())) {
             sleep(task.getPager().getIntervalMillis());
             response =
-                    fetch(task, retryHelper, nextParams(task, response), nextBody(task, response));
+                    fetch(
+                            task,
+                            retryHelper,
+                            nextParams(response, task.getPager()),
+                            nextBody(response, task.getPager()).or(() -> task.getBody()));
             ingestTransformedJsonRecord(
                     task, recordImporter, pageBuilder, transformResponse(task, response));
         }
@@ -91,7 +97,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
     }
 
     private ObjectNode fetch(
-            PluginTask task,
+            RequestOption requestOption,
             JAXRSRetryHelper retryHelper,
             List<Map<String, Object>> additionalParams,
             Optional<JsonNode> body) {
@@ -99,18 +105,18 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         return JAXRSJsonNodeSingleRequester.builder()
                 .jq(jq)
                 .retryHelper(retryHelper)
-                .scheme(task.getScheme())
-                .host(task.getHost())
-                .port(task.getPort())
-                .path(task.getPath())
-                .method(task.getMethod())
-                .headers(convertHeadersType(task.getHeaders()))
-                .params(task.getParams())
+                .scheme(requestOption.getScheme())
+                .host(requestOption.getHost())
+                .port(requestOption.getPort())
+                .path(requestOption.getPath())
+                .method(requestOption.getMethod())
+                .headers(convertHeadersType(requestOption.getHeaders()))
+                .params(requestOption.getParams())
                 .params(additionalParams)
                 .body(body)
-                .successCondition(task.getSuccessCondition())
-                .retryCondition(task.getRetry().getCondition())
-                .showRequestBodyOnError(task.getShowRequestBodyOnError())
+                .successCondition(requestOption.getSuccessCondition())
+                .retryCondition(requestOption.getRetry().getCondition())
+                .showRequestBodyOnError(requestOption.getShowRequestBodyOnError())
                 .build()
                 .requestWithRetry();
     }
@@ -173,9 +179,9 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         }
     }
 
-    private boolean pagenationRequired(PluginTask task, ObjectNode response) {
+    private boolean pagenationRequired(ObjectNode response, PagerOption pagerOption) {
         try {
-            return jq.jqBoolean(task.getPager().getWhile(), response);
+            return jq.jqBoolean(pagerOption.getWhile(), response);
         } catch (IllegalJQProcessingException e) {
             throw new DataException("Failed to apply 'until_condition'.", e);
         }
@@ -189,9 +195,9 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         }
     }
 
-    private List<Map<String, Object>> nextParams(PluginTask task, ObjectNode response) {
+    private List<Map<String, Object>> nextParams(ObjectNode response, PagerOption pagerOption) {
         List<Map<String, Object>> nextParams = new ArrayList<>();
-        for (Map<String, Object> p : task.getPager().getNextParams()) {
+        for (Map<String, Object> p : pagerOption.getNextParams()) {
             for (Map.Entry<String, Object> e : p.entrySet()) {
                 Map<String, Object> np = new HashMap<>();
                 Object v;
@@ -225,12 +231,12 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         return nextParams;
     }
 
-    private Optional<JsonNode> nextBody(PluginTask task, ObjectNode response) {
-        if (!task.getBody().isPresent()) {
+    private Optional<JsonNode> nextBody(ObjectNode response, PagerOption pagerOption) {
+        if (!pagerOption.getNextBodyTransformer().isPresent()) {
             return Optional.empty();
         }
         try {
-            return Optional.of(jq.jqSingle(task.getPager().getNextBodyTransformer(), response));
+            return Optional.of(jq.jqSingle(pagerOption.getNextBodyTransformer().get(), response));
         } catch (IllegalJQProcessingException ex) {
             throw new DataException("Failed to apply 'next_body_transformer'.", ex);
         }
