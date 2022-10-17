@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.ClientBuilder;
 import org.embulk.base.restclient.DefaultServiceDataSplitter;
 import org.embulk.base.restclient.RestClientInputPluginDelegate;
@@ -96,13 +97,29 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
             Optional<JsonNode> body) {
 
         return JAXRSJsonNodeSingleRequester.builder()
-                .task(task)
                 .jq(jq)
                 .retryHelper(retryHelper)
-                .additionalParams(additionalParams)
+                .scheme(task.getScheme())
+                .host(task.getHost())
+                .port(task.getPort())
+                .path(task.getPath())
+                .method(task.getMethod())
+                .headers(convertHeadersType(task.getHeaders()))
+                .params(task.getParams())
+                .params(additionalParams)
                 .body(body)
+                .successCondition(task.getSuccessCondition())
+                .retryCondition(task.getRetry().getCondition())
+                .showRequestBodyOnError(task.getShowRequestBodyOnError())
                 .build()
                 .requestWithRetry();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> convertHeadersType(List<Map<String, String>> headers) {
+        return headers.stream()
+                .map(h -> (Map<String, Object>) (Map<String, ?>) h)
+                .collect(Collectors.toList());
     }
 
     @Override

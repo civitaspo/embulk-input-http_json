@@ -3,6 +3,7 @@ package pro.civitaspo.embulk.input.http_json.jaxrs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +21,6 @@ import org.embulk.util.retryhelper.jaxrs.JAXRSRetryHelper;
 import org.embulk.util.retryhelper.jaxrs.JAXRSSingleRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pro.civitaspo.embulk.input.http_json.config.PluginTask;
 import pro.civitaspo.embulk.input.http_json.jq.IllegalJQProcessingException;
 import pro.civitaspo.embulk.input.http_json.jq.InvalidJQFilterException;
 import pro.civitaspo.embulk.input.http_json.jq.JQ;
@@ -31,21 +31,88 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
             LoggerFactory.getLogger(JAXRSJsonNodeSingleRequester.class);
 
     public static class Builder {
-        private PluginTask task;
-        private List<Map<String, Object>> additionalParams;
+        private String scheme;
+        private String host;
+        private Optional<Integer> port = Optional.empty();
+        private Optional<String> path = Optional.empty();
+        private String method;
+        private List<Map<String, Object>> headers;
+        private List<Map<String, Object>> params;
         private Optional<JsonNode> body;
+        private String successCondition;
+        private String retryCondition;
         private JQ jq;
         private JAXRSRetryHelper retryHelper;
+        private boolean showRequestBodyOnError;
 
         private Builder() {}
 
-        public Builder task(PluginTask task) {
-            this.task = task;
+        public Builder scheme(String scheme) {
+            this.scheme = scheme;
             return this;
         }
 
-        public Builder additionalParams(List<Map<String, Object>> additionalParams) {
-            this.additionalParams = additionalParams;
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        public Builder port(Optional<Integer> port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder port(Integer port) {
+            if (port == null) this.port = Optional.empty();
+            else this.port = Optional.of(port);
+            return this;
+        }
+
+        public Builder path(Optional<String> path) {
+            this.path = path;
+            return this;
+        }
+
+        public Builder path(String path) {
+            if (path == null) this.path = Optional.empty();
+            else this.path = Optional.of(path);
+            return this;
+        }
+
+        public Builder method(String method) {
+            this.method = method;
+            return this;
+        }
+
+        public Builder headers(List<Map<String, Object>> headers) {
+            if (this.headers == null) this.headers = new ArrayList<>();
+            this.headers.addAll(headers);
+            return this;
+        }
+
+        public Builder params(List<Map<String, Object>> params) {
+            if (this.params == null) this.params = new ArrayList<>();
+            this.params.addAll(params);
+            return this;
+        }
+
+        public Builder body(Optional<JsonNode> body) {
+            this.body = body;
+            return this;
+        }
+
+        public Builder successCondition(String successCondition) {
+            this.successCondition = successCondition;
+            return this;
+        }
+
+        public Builder retryCondition(String retryCondition) {
+            this.retryCondition = retryCondition;
+            return this;
+        }
+
+        public Builder showRequestBodyOnError(boolean showRequestBodyOnError) {
+            this.showRequestBodyOnError = showRequestBodyOnError;
             return this;
         }
 
@@ -59,19 +126,76 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
             return this;
         }
 
-        public Builder body(Optional<JsonNode> body) {
-            this.body = body;
-            return this;
+        public JAXRSJsonNodeSingleRequester build() {
+            return new JAXRSJsonNodeSingleRequester(this);
         }
 
-        public JAXRSJsonNodeSingleRequester build() {
-            if (task == null) throw new IllegalStateException("task is not set");
-            if (jq == null) throw new IllegalStateException("jq is not set");
-            if (additionalParams == null)
-                throw new IllegalStateException("additionalParams is not set");
-            if (retryHelper == null) throw new IllegalStateException("retryHelper is not set");
+        private Optional<JsonNode> buildBody() {
             if (body == null) throw new IllegalStateException("body is not set");
-            return new JAXRSJsonNodeSingleRequester(this);
+            return body;
+        }
+
+        private MultivaluedMap<String, Object> buildParams() {
+            if (params == null) throw new IllegalStateException("params is not set");
+            MultivaluedMap<String, Object> paramsMap = new MultivaluedHashMap<>();
+            params.forEach(p -> p.forEach((k, v) -> paramsMap.add(k, v)));
+            return paramsMap;
+        }
+
+        private String buildEndpoint() {
+            if (scheme == null) throw new IllegalStateException("scheme is not set");
+            if (host == null) throw new IllegalStateException("host is not set");
+            StringBuilder endpointBuilder = new StringBuilder();
+            endpointBuilder.append(scheme).append("://").append(host);
+            port.ifPresent(p -> endpointBuilder.append(":").append(p));
+            path.ifPresent(p -> endpointBuilder.append(p));
+            return endpointBuilder.toString();
+        }
+
+        private String buildMethod() {
+            if (method == null) throw new IllegalStateException("method is not set");
+            return method;
+        }
+
+        private MultivaluedMap<String, Object> buildHeaders() {
+            if (headers == null) throw new IllegalStateException("headers is not set");
+            MultivaluedMap<String, Object> headersMap = new MultivaluedHashMap<>();
+            headers.forEach(h -> h.forEach((k, v) -> headersMap.add(k, v)));
+            headersMap.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_TYPE);
+            return headersMap;
+        }
+
+        private JAXRSResponseJqCondition buildSuccessCondition() {
+            if (jq == null) throw new IllegalStateException("jq is not set");
+            if (successCondition == null)
+                throw new IllegalStateException("successCondition is not set");
+            try {
+                return new JAXRSResponseJqCondition(jq, successCondition);
+            } catch (InvalidJQFilterException e) {
+                throw new ConfigException(
+                        String.format("Cannot compile the condition: '%s'", successCondition), e);
+            }
+        }
+
+        private JAXRSResponseJqCondition buildRetryCondition() {
+            if (jq == null) throw new IllegalStateException("jq is not set");
+            if (retryCondition == null)
+                throw new IllegalStateException("retryCondition is not set");
+            try {
+                return new JAXRSResponseJqCondition(jq, retryCondition);
+            } catch (InvalidJQFilterException e) {
+                throw new ConfigException(
+                        String.format("Cannot compile the condition: '%s'", retryCondition), e);
+            }
+        }
+
+        private JAXRSRetryHelper buildRetryHelper() {
+            if (retryHelper == null) throw new IllegalStateException("retryHelper is not set");
+            return retryHelper;
+        }
+
+        private boolean buildShowRequestBodyOnError() {
+            return showRequestBodyOnError;
         }
     }
 
@@ -90,47 +214,15 @@ public class JAXRSJsonNodeSingleRequester extends JAXRSSingleRequester {
     private final boolean showRequestBodyOnError;
 
     private JAXRSJsonNodeSingleRequester(Builder builder) {
-        this.body = builder.body;
-        this.params = buildParams(builder.task, builder.additionalParams);
-        this.endpoint = buildEndpoint(builder.task);
-        this.method = builder.task.getMethod();
-        this.headers = buildHeaders(builder.task);
-        try {
-            this.successCondition =
-                    new JAXRSResponseJqCondition(builder.jq, builder.task.getSuccessCondition());
-            this.retryableCondition =
-                    new JAXRSResponseJqCondition(
-                            builder.jq, builder.task.getRetry().getCondition());
-        } catch (InvalidJQFilterException e) {
-            throw new ConfigException(e);
-        }
-        this.retryHelper = builder.retryHelper;
-        this.showRequestBodyOnError = builder.task.getShowRequestBodyOnError();
-    }
-
-    private String buildEndpoint(PluginTask task) {
-        StringBuilder endpointBuilder = new StringBuilder();
-        endpointBuilder.append(task.getScheme().toString());
-        endpointBuilder.append("://");
-        endpointBuilder.append(task.getHost());
-        task.getPort().ifPresent(port -> endpointBuilder.append(":").append(port));
-        task.getPath().ifPresent(path -> endpointBuilder.append(path));
-        return endpointBuilder.toString();
-    }
-
-    private MultivaluedMap<String, Object> buildHeaders(PluginTask task) {
-        MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
-        task.getHeaders().forEach(h -> h.forEach((k, v) -> headers.add(k, v)));
-        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_TYPE);
-        return headers;
-    }
-
-    private MultivaluedMap<String, Object> buildParams(
-            PluginTask task, List<Map<String, Object>> additionalParams) {
-        MultivaluedMap<String, Object> paramsMap = new MultivaluedHashMap<>();
-        task.getParams().forEach(p -> p.forEach((k, v) -> paramsMap.add(k, v)));
-        additionalParams.forEach(p -> p.forEach((k, v) -> paramsMap.add(k, v)));
-        return paramsMap;
+        this.body = builder.buildBody();
+        this.params = builder.buildParams();
+        this.endpoint = builder.buildEndpoint();
+        this.method = builder.buildMethod();
+        this.headers = builder.buildHeaders();
+        this.successCondition = builder.buildSuccessCondition();
+        this.retryableCondition = builder.buildRetryCondition();
+        this.retryHelper = builder.buildRetryHelper();
+        this.showRequestBodyOnError = builder.buildShowRequestBodyOnError();
     }
 
     private Response doRequestOnce(Client client) {
