@@ -71,18 +71,14 @@ public interface PluginTask extends RestClientInputTaskBase, RequestOption {
         @ConfigDefault("[]")
         public List<NamedRequestOption> getRequests();
 
-        public interface AssignToOption extends Task {
-            @Config("params")
-            @ConfigDefault("[]")
-            public List<Map<@NotBlank String, @NotNull String>> getParams();
+        @Config("prepared_params")
+        @ConfigDefault("[]")
+        public List<@Size(min = 1, max = 1) Map<@NotBlank String, @NotBlank Object>>
+                getPreparedParams();
 
-            @Config("body")
-            @ConfigDefault("null")
-            public Optional<String> getBody();
-        }
-
-        @Config("assign_to")
-        public AssignToOption getAssignTo();
+        @Config("prepared_body_transformer")
+        @ConfigDefault("null")
+        public Optional<String> getPreparedBodyTransformer();
     }
 
     @Config("prepare")

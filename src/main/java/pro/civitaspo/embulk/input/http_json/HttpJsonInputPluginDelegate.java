@@ -6,12 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.client.ClientBuilder;
 import org.embulk.base.restclient.DefaultServiceDataSplitter;
 import org.embulk.base.restclient.RestClientInputPluginDelegate;
@@ -34,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pro.civitaspo.embulk.input.http_json.config.PluginTask;
 import pro.civitaspo.embulk.input.http_json.config.PluginTask.PagerOption;
+import pro.civitaspo.embulk.input.http_json.config.PluginTask.PrepareOption;
+import pro.civitaspo.embulk.input.http_json.config.PluginTask.PrepareOption.NamedRequestOption;
 import pro.civitaspo.embulk.input.http_json.config.RequestOption;
 import pro.civitaspo.embulk.input.http_json.config.validation.BeanValidator;
 import pro.civitaspo.embulk.input.http_json.jaxrs.JAXRSJsonNodeSingleRequester;
@@ -78,18 +82,52 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         TaskReport report =
                 configMapperFactory
                         .newTaskReport(); // todo: numRecords, avgLatency, maxLatency, minLatency,
+        final List<Map<String, Object>> preparedParams;
+        final Optional<JsonNode> preparedBody;
+        if (!task.getPrepare().isPresent()) {
+            preparedParams = new ArrayList<>();
+            preparedBody = Optional.empty();
+        } else {
+            PrepareOption prepareOption = task.getPrepare().get();
+            ObjectNode preparedResponse = objectMapper.createObjectNode();
+            for (NamedRequestOption requestOption : prepareOption.getRequests()) {
+                ObjectNode response =
+                        fetch(
+                                requestOption,
+                                retryHelper,
+                                requestOption.getParams(),
+                                requestOption.getBody());
+                preparedResponse.set(requestOption.getName(), response);
+            }
+            preparedParams =
+                    extractParamsWithJq(preparedResponse, prepareOption.getPreparedParams());
+            preparedBody =
+                    extractBodyWithJq(preparedResponse, prepareOption.getPreparedBodyTransformer());
+        }
         ObjectNode response =
-                fetch(task, retryHelper, task.getPager().getInitialParams(), task.getBody());
+                fetch(
+                        task,
+                        retryHelper,
+                        joinParams(
+                                task.getParams(),
+                                task.getPager().getInitialParams(),
+                                preparedParams),
+                        findFirstBodyOrEmpty(preparedBody, task.getBody()));
         ingestTransformedJsonRecord(
                 task, recordImporter, pageBuilder, transformResponse(task, response));
         while (pagenationRequired(response, task.getPager())) {
             sleep(task.getPager().getIntervalMillis());
-            response =
-                    fetch(
-                            task,
-                            retryHelper,
-                            nextParams(response, task.getPager()),
-                            nextBody(response, task.getPager()).or(() -> task.getBody()));
+            List<Map<String, Object>> nextParams =
+                    joinParams(
+                            task.getParams(),
+                            extractParamsWithJq(response, task.getPager().getNextParams()),
+                            preparedParams);
+            Optional<JsonNode> nextBody =
+                    findFirstBodyOrEmpty(
+                            extractBodyWithJq(response, task.getPager().getNextBodyTransformer()),
+                            preparedBody,
+                            task.getBody());
+            response = fetch(task, retryHelper, nextParams, nextBody);
             ingestTransformedJsonRecord(
                     task, recordImporter, pageBuilder, transformResponse(task, response));
         }
@@ -99,7 +137,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
     private ObjectNode fetch(
             RequestOption requestOption,
             JAXRSRetryHelper retryHelper,
-            List<Map<String, Object>> additionalParams,
+            List<Map<String, Object>> params,
             Optional<JsonNode> body) {
 
         return JAXRSJsonNodeSingleRequester.builder()
@@ -111,8 +149,7 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
                 .path(requestOption.getPath())
                 .method(requestOption.getMethod())
                 .headers(convertHeadersType(requestOption.getHeaders()))
-                .params(requestOption.getParams())
-                .params(additionalParams)
+                .params(params)
                 .body(body)
                 .successCondition(requestOption.getSuccessCondition())
                 .retryCondition(requestOption.getRetry().getCondition())
@@ -126,6 +163,18 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         return headers.stream()
                 .map(h -> (Map<String, Object>) (Map<String, ?>) h)
                 .collect(Collectors.toList());
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
+    private final List<Map<String, Object>> joinParams(List<Map<String, Object>>... params) {
+        return Stream.of(params).flatMap(List::stream).collect(Collectors.toList());
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
+    private final Optional<JsonNode> findFirstBodyOrEmpty(Optional<JsonNode>... bodies) {
+        return Stream.of(bodies).filter(Optional::isPresent).findFirst().orElse(Optional.empty());
     }
 
     @Override
@@ -195,9 +244,10 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         }
     }
 
-    private List<Map<String, Object>> nextParams(ObjectNode response, PagerOption pagerOption) {
+    private List<Map<String, Object>> extractParamsWithJq(
+            ObjectNode response, List<Map<String, Object>> nameToJqFilterMaps) {
         List<Map<String, Object>> nextParams = new ArrayList<>();
-        for (Map<String, Object> p : pagerOption.getNextParams()) {
+        for (Map<String, Object> p : nameToJqFilterMaps) {
             for (Map.Entry<String, Object> e : p.entrySet()) {
                 Map<String, Object> np = new HashMap<>();
                 Object v;
@@ -231,14 +281,14 @@ public class HttpJsonInputPluginDelegate implements RestClientInputPluginDelegat
         return nextParams;
     }
 
-    private Optional<JsonNode> nextBody(ObjectNode response, PagerOption pagerOption) {
-        if (!pagerOption.getNextBodyTransformer().isPresent()) {
+    private Optional<JsonNode> extractBodyWithJq(ObjectNode response, Optional<String> jqFilter) {
+        if (!jqFilter.isPresent()) {
             return Optional.empty();
         }
         try {
-            return Optional.of(jq.jqSingle(pagerOption.getNextBodyTransformer().get(), response));
+            return Optional.ofNullable(jq.jqSingle(jqFilter.get(), response));
         } catch (IllegalJQProcessingException ex) {
-            throw new DataException("Failed to apply 'next_body_transformer'.", ex);
+            throw new DataException(String.format("Failed to apply '%s').", jqFilter.get()), ex);
         }
     }
 
