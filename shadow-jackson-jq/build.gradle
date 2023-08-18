@@ -23,7 +23,7 @@ configurations {
 dependencies {
     // TODO: Use a stable release instead of the preview release.
     // https://mvnrepository.com/artifact/net.thisptr/jackson-jq
-    implementation 'net.thisptr:jackson-jq:1.0.0-preview.20220705'
+    implementation 'net.thisptr:jackson-jq:1.0.0-preview.20230409'
 }
 // Relocate some packages since they are incompatible from Embulk's.
 shadowJar {
