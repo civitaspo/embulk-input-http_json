@@ -218,7 +218,7 @@ public interface PluginTask extends RestClientInputTaskBase {
     }
 
     @Config("prepare")
-    @ConfigDefault("{}")
+    @ConfigDefault("[]")
     public List<PrepareOption> getPrepare();
 
     @Config("default_timezone")
