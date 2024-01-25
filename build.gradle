@@ -1,7 +1,7 @@
 plugins {
     id "java"
     id "maven-publish"
-    id "org.embulk.embulk-plugins" version "0.5.3"
+    id "org.embulk.embulk-plugins" version "0.6.2"
     id "com.diffplug.spotless" version "6.11.0"
     // note: We cannot use the latest version because of the following error.
     // > org/eclipse/jgit/lib/Repository has been compiled by a more recent version of the Java Runtime (class file version 55.0), this version of the Java Runtime only recognizes class file versions up to 52.0
@@ -26,10 +26,27 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    def embulkVersion = "0.11"
+    def embulkVersion = "0.11.2"
     compileOnly "org.embulk:embulk-spi:${embulkVersion}"
 
-    implementation "org.embulk:embulk-util-config:0.3.3"
+    implementation("org.embulk:embulk-util-config:0.3.3") {
+        // They conflict with embulk-core. They are once excluded here,
+        // and added explicitly with versions exactly the same with older embulk-core (until v0.10.31).
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
+        exclude group: "com.fasterxml.jackson.datatype", module: "jackson-datatype-jdk8"
+        exclude group: "javax.validation", module: "validation-api"
+    }
+
+    // They are once excluded from transitive dependencies of other dependencies,
+    // and added explicitly with versions exactly the same with embulk-core:0.10.29.
+    implementation "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
+    implementation "com.fasterxml.jackson.core:jackson-core:2.6.7"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.6.7"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.6.7"
+    implementation "javax.validation:validation-api:1.1.0.Final"
+
     implementation "org.embulk:embulk-util-json:0.2.2"
     implementation "org.embulk:embulk-util-timestamp:0.2.2"
     // note: 8.0.0 is not compatible with Embulk 0.10.36.
@@ -44,8 +61,11 @@ dependencies {
     }
     // NOTE: Avoid 'java.lang.LinkageError: ClassCastException: attempting to castjar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class to jar:file:./build/gemContents/classpath/javax.ws.rs-api-2.0.1.jar!/javax/ws/rs/client/ClientBuilder.class'
     // compile "org.glassfish.jersey.core:jersey-client:3.0.3"
-    implementation "org.glassfish.jersey.core:jersey-client:2.25.1"
+    implementation("org.glassfish.jersey.core:jersey-client:2.25.1") {
+        exclude group: "javax.inject", module: "javax.inject"
+    }
     implementation project(path: ":shadow-jackson-jq", configuration: 'shadow')
+    implementation 'javax.activation:javax.activation-api:1.2.0'
     
     testImplementation platform('org.junit:junit-bom:5.8.1')
     testImplementation "org.junit.jupiter:junit-jupiter"
